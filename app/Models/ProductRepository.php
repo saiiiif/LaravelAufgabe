@@ -2,116 +2,137 @@
 
 namespace App\Models;
 
+use PDO;
 use RuntimeException;
 
 class ProductRepository
 {
-    private string $storagePath;
-
-    public function __construct(string $storagePath)
+    public function __construct(private PDO $connection)
     {
-        $this->storagePath = $storagePath;
-        $this->ensureStorageExists();
     }
 
-    /** @return array<int, array<string, mixed>> */
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function all(): array
     {
-        return array_values($this->read());
+        $statement = $this->connection->query('SELECT * FROM products ORDER BY created_at DESC');
+        $rows = $statement !== false ? $statement->fetchAll() : [];
+
+        return array_map(fn (array $row) => $this->mapProduct($row), $rows);
     }
 
-    /** @return array<string, mixed>|null */
+    /**
+     * @return array<string, mixed>|null
+     */
     public function find(string $id): ?array
     {
-        $products = $this->read();
-        return $products[$id] ?? null;
+        $statement = $this->connection->prepare('SELECT * FROM products WHERE id = :id LIMIT 1');
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch();
+
+        return $row === false ? null : $this->mapProduct($row);
     }
 
-    /** @param array<string, mixed> $attributes */
+    /**
+     * @param array{name: string, sku: string, quantity: int, unit_price: float} $attributes
+     * @return array<string, mixed>
+     */
     public function create(array $attributes): array
     {
-        $products = $this->read();
-        $id = $this->generateId($products);
-        $attributes['id'] = $id;
-        $products[(string) $id] = $attributes;
-        $this->write($products);
+        $now = $this->now();
+        $token = $this->generateToken();
 
-        return $attributes;
-    }
+        $statement = $this->connection->prepare(
+            'INSERT INTO products (name, sku, quantity, unit_price, qr_token, created_at, updated_at)
+             VALUES (:name, :sku, :quantity, :unit_price, :qr_token, :created_at, :updated_at)'
+        );
 
-    /** @param array<string, mixed> $attributes */
-    public function update(string $id, array $attributes): array
-    {
-        $products = $this->read();
+        $statement->execute([
+            'name' => $attributes['name'],
+            'sku' => $attributes['sku'],
+            'quantity' => $attributes['quantity'],
+            'unit_price' => $attributes['unit_price'],
+            'qr_token' => $token,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
 
-        if (!isset($products[$id])) {
-            throw new RuntimeException('Product not found.');
+        $id = $this->connection->lastInsertId();
+
+        if ($id === false) {
+            throw new RuntimeException('Failed to determine the inserted product identifier.');
         }
 
-        $attributes['id'] = (int) $id;
-        $products[$id] = $attributes;
-        $this->write($products);
+        return $this->requireProduct($id);
+    }
 
-        return $attributes;
+    /**
+     * @param array{name: string, sku: string, quantity: int, unit_price: float} $attributes
+     * @return array<string, mixed>
+     */
+    public function update(string $id, array $attributes): array
+    {
+        $this->requireProduct($id);
+
+        $statement = $this->connection->prepare(
+            'UPDATE products SET name = :name, sku = :sku, quantity = :quantity, unit_price = :unit_price, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $statement->execute([
+            'id' => $id,
+            'name' => $attributes['name'],
+            'sku' => $attributes['sku'],
+            'quantity' => $attributes['quantity'],
+            'unit_price' => $attributes['unit_price'],
+            'updated_at' => $this->now(),
+        ]);
+
+        return $this->requireProduct($id);
     }
 
     public function delete(string $id): void
     {
-        $products = $this->read();
-        unset($products[$id]);
-        $this->write($products);
+        $statement = $this->connection->prepare('DELETE FROM products WHERE id = :id');
+        $statement->execute(['id' => $id]);
+    }
+
+    private function requireProduct(string $id): array
+    {
+        $product = $this->find($id);
+
+        if ($product === null) {
+            throw new RuntimeException('Product not found.');
+        }
+
+        return $product;
     }
 
     /**
-     * @param array<int|string, array<string, mixed>> $products
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
      */
-    private function generateId(array $products): int
+    private function mapProduct(array $row): array
     {
-        $ids = array_map(static fn ($product) => (int) ($product['id'] ?? 0), $products);
-        $ids[] = 0;
-        return max($ids) + 1;
+        return [
+            'id' => (int) $row['id'],
+            'name' => (string) $row['name'],
+            'sku' => (string) $row['sku'],
+            'quantity' => (int) $row['quantity'],
+            'unit_price' => (float) $row['unit_price'],
+            'qr_token' => (string) $row['qr_token'],
+            'created_at' => (string) $row['created_at'],
+            'updated_at' => (string) $row['updated_at'],
+        ];
     }
 
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function read(): array
+    private function now(): string
     {
-        $contents = file_get_contents($this->storagePath);
-
-        if ($contents === false) {
-            return [];
-        }
-
-        $decoded = json_decode($contents, true, flags: JSON_THROW_ON_ERROR);
-
-        if (!is_array($decoded)) {
-            return [];
-        }
-
-        return $decoded;
+        return gmdate('c');
     }
 
-    /**
-     * @param array<string, array<string, mixed>> $products
-     */
-    private function write(array $products): void
+    private function generateToken(): string
     {
-        $encoded = json_encode($products, JSON_PRETTY_PRINT);
-
-        if ($encoded === false) {
-            throw new RuntimeException('Failed to encode products.');
-        }
-
-        if (file_put_contents($this->storagePath, $encoded) === false) {
-            throw new RuntimeException('Failed to write products.');
-        }
-    }
-
-    private function ensureStorageExists(): void
-    {
-        if (!file_exists($this->storagePath)) {
-            $this->write([]);
-        }
+        return bin2hex(random_bytes(16));
     }
 }

@@ -1,17 +1,21 @@
 <?php
 
+use App\Core\Database;
 use App\Core\Router;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProductController;
 use App\Models\ProductRepository;
 
 $router = new Router();
 
-$repository = new ProductRepository(__DIR__ . '/../storage/products.json');
+$database = new Database(__DIR__ . '/../storage/database.sqlite');
+$repository = new ProductRepository($database->connection());
 $productController = new ProductController($repository);
 $authController = new AuthController();
+$landingController = new LandingController();
 
-$router->get('/', fn () => $productController->dashboard());
+$router->get('/', fn () => $landingController->show());
 $router->get('/dashboard', fn () => $productController->dashboard());
 $router->get('/products/create', fn () => $productController->create());
 $router->post('/products', fn () => $productController->store());

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductRepository;
+use PDOException;
 
 class ProductController extends Controller
 {
@@ -66,7 +67,24 @@ class ProductController extends Controller
             $this->redirect('/products/create');
         }
 
-        $this->repository->create($data);
+        try {
+            $this->repository->create($data);
+        } catch (PDOException $exception) {
+            if ($exception->getCode() === '23000') {
+                $_SESSION['errors'] = ['sku' => 'This SKU is already in use. Please choose another one.'];
+                $_SESSION['old'] = [
+                    'name' => $data['name'],
+                    'sku' => $data['sku'],
+                    'quantity' => (string) $data['quantity'],
+                    'unit_price' => (string) $data['unit_price'],
+                ];
+
+                $this->redirect('/products/create');
+            }
+
+            throw $exception;
+        }
+
         $_SESSION['flash'] = 'Product created successfully.';
         $this->redirect('/dashboard');
     }
@@ -105,7 +123,24 @@ class ProductController extends Controller
             $this->redirect("/products/{$id}/edit");
         }
 
-        $this->repository->update($id, $data);
+        try {
+            $this->repository->update($id, $data);
+        } catch (PDOException $exception) {
+            if ($exception->getCode() === '23000') {
+                $_SESSION['errors'] = ['sku' => 'This SKU is already in use. Please choose another one.'];
+                $_SESSION['old'] = [
+                    'name' => $data['name'],
+                    'sku' => $data['sku'],
+                    'quantity' => (string) $data['quantity'],
+                    'unit_price' => (string) $data['unit_price'],
+                ];
+
+                $this->redirect("/products/{$id}/edit");
+            }
+
+            throw $exception;
+        }
+
         $_SESSION['flash'] = 'Product updated successfully.';
         $this->redirect('/dashboard');
     }
