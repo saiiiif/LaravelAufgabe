@@ -16,10 +16,75 @@
         .stock-table td.text-right, .stock-table th.text-right {
             text-align: right;
         }
+        .splash-page {
+            background: linear-gradient(135deg, #1d2671 0%, #c33764 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .splash-container {
+            width: 100%;
+            max-width: 480px;
+        }
+        .splash-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 1.25rem;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.35);
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            backdrop-filter: blur(12px);
+        }
+        .splash-card .logo {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+        }
+        .splash-title {
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+        .splash-subtitle {
+            margin-bottom: 1.5rem;
+            color: rgba(255, 255, 255, 0.85);
+        }
+        .splash-help {
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .splash-card .progress {
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        @media (max-width: 576px) {
+            .splash-card {
+                padding: 2rem 1.5rem;
+            }
+        }
     </style>
 </head>
-<body class="<?php echo !empty($authPage) ? 'hold-transition login-page' : 'hold-transition sidebar-mini layout-fixed'; ?>">
-<?php if (!empty($authPage)): ?>
+<?php
+$isAuthPage = !empty($authPage);
+$isSplashPage = !empty($splashPage);
+$bodyClass = $isAuthPage
+    ? 'hold-transition login-page'
+    : ($isSplashPage ? 'hold-transition splash-page' : 'hold-transition sidebar-mini layout-fixed');
+?>
+<body class="<?php echo $bodyClass; ?>">
+<?php if ($isAuthPage || $isSplashPage): ?>
     <?php include $viewPath; ?>
 <?php else: ?>
     <div class="wrapper">
