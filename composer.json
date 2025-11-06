@@ -1,0 +1,16 @@
+{
+    "name": "stock-manager/app",
+    "description": "Simple stock management application implemented in pure PHP with a Laravel-like structure.",
+    "type": "project",
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "scripts": {
+        "serve": "php -S localhost:8000 -t public"
+    }
+}
