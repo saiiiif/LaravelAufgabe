@@ -1,26 +1,34 @@
-<section>
-    <h2>Edit product</h2>
-    <form method="post" action="/products/<?php echo $product['id']; ?>">
-        <input type="hidden" name="_method" value="PUT">
-        <label>
-            Name
-            <input type="text" name="name" value="<?php echo htmlspecialchars($old['name'] ?? $product['name']); ?>" required>
-        </label>
-        <label>
-            SKU
-            <input type="text" name="sku" value="<?php echo htmlspecialchars($old['sku'] ?? $product['sku']); ?>" required>
-        </label>
-        <label>
-            Quantity
-            <input type="number" name="quantity" min="0" value="<?php echo htmlspecialchars($old['quantity'] ?? $product['quantity']); ?>" required>
-        </label>
-        <label>
-            Unit price
-            <input type="number" step="0.01" min="0" name="unit_price" value="<?php echo htmlspecialchars($old['unit_price'] ?? $product['unit_price']); ?>" required>
-        </label>
-        <div class="grid">
-            <button type="submit">Update product</button>
-            <a role="button" class="secondary" href="/">Cancel</a>
+<div class="row">
+    <div class="col-lg-8 col-12">
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title">Edit product</h3>
+            </div>
+            <form method="post" action="/products/<?php echo $product['id']; ?>">
+                <input type="hidden" name="_method" value="PUT">
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" class="form-control" value="<?php echo htmlspecialchars($old['name'] ?? $product['name']); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sku">SKU</label>
+                        <input type="text" id="sku" name="sku" class="form-control" value="<?php echo htmlspecialchars($old['sku'] ?? $product['sku']); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity</label>
+                        <input type="number" id="quantity" name="quantity" min="0" class="form-control" value="<?php echo htmlspecialchars($old['quantity'] ?? $product['quantity']); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="unit_price">Unit price (€)</label>
+                        <input type="number" id="unit_price" name="unit_price" step="0.01" min="0" class="form-control" value="<?php echo htmlspecialchars($old['unit_price'] ?? $product['unit_price']); ?>" required>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary">Update product</button>
+                    <a href="/dashboard" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
         </div>
-    </form>
-</section>
+    </div>
+</div>

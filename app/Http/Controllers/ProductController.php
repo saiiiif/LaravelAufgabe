@@ -10,30 +10,47 @@ class ProductController extends Controller
     {
     }
 
-    public function index(): void
+    public function dashboard(): void
     {
-        $products = $this->repository->all();
-        $totalQuantity = array_reduce($products, fn ($carry, $product) => $carry + (int) $product['quantity'], 0);
-        $totalValue = array_reduce($products, fn ($carry, $product) => $carry + ((int) $product['quantity'] * (float) $product['unit_price']), 0.0);
+        $this->ensureAuthenticated();
 
-        $this->view('products.index', [
-            'products' => $products,
-            'totalQuantity' => $totalQuantity,
-            'totalValue' => $totalValue,
+        $data = $this->inventoryData();
+
+        $this->view('products.index', $data + [
             'flash' => $_SESSION['flash'] ?? null,
             'errors' => $_SESSION['errors'] ?? [],
             'old' => $_SESSION['old'] ?? [],
+            'user' => $this->currentUser(),
+            'pageTitle' => 'Dashboard',
         ]);
 
         unset($_SESSION['flash'], $_SESSION['errors'], $_SESSION['old']);
     }
 
+    public function stats(): void
+    {
+        $this->ensureAuthenticated();
+
+        $data = $this->inventoryData();
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'products' => array_values($data['products']),
+            'totals' => $data['totals'],
+            'lowStock' => $data['lowStock'],
+        ]);
+    }
+
     public function create(): void
     {
+        $this->ensureAuthenticated();
+
         $this->view('products.create', [
             'flash' => $_SESSION['flash'] ?? null,
             'errors' => $_SESSION['errors'] ?? [],
             'old' => $_SESSION['old'] ?? [],
+            'user' => $this->currentUser(),
+            'pageTitle' => 'Add product',
         ]);
 
         unset($_SESSION['flash'], $_SESSION['errors'], $_SESSION['old']);
@@ -41,20 +58,23 @@ class ProductController extends Controller
 
     public function store(): void
     {
+        $this->ensureAuthenticated();
+
         $data = $this->validatedData();
 
         if (!$data) {
             $this->redirect('/products/create');
-            return;
         }
 
         $this->repository->create($data);
         $_SESSION['flash'] = 'Product created successfully.';
-        $this->redirect('/');
+        $this->redirect('/dashboard');
     }
 
     public function edit(string $id): void
     {
+        $this->ensureAuthenticated();
+
         $product = $this->repository->find($id);
 
         if ($product === null) {
@@ -68,6 +88,8 @@ class ProductController extends Controller
             'flash' => $_SESSION['flash'] ?? null,
             'errors' => $_SESSION['errors'] ?? [],
             'old' => $_SESSION['old'] ?? [],
+            'user' => $this->currentUser(),
+            'pageTitle' => 'Edit product',
         ]);
 
         unset($_SESSION['flash'], $_SESSION['errors'], $_SESSION['old']);
@@ -75,23 +97,51 @@ class ProductController extends Controller
 
     public function update(string $id): void
     {
+        $this->ensureAuthenticated();
+
         $data = $this->validatedData();
 
         if (!$data) {
             $this->redirect("/products/{$id}/edit");
-            return;
         }
 
         $this->repository->update($id, $data);
         $_SESSION['flash'] = 'Product updated successfully.';
-        $this->redirect('/');
+        $this->redirect('/dashboard');
     }
 
     public function destroy(string $id): void
     {
+        $this->ensureAuthenticated();
+
         $this->repository->delete($id);
         $_SESSION['flash'] = 'Product deleted.';
-        $this->redirect('/');
+        $this->redirect('/dashboard');
+    }
+
+    /**
+     * @return array{
+     *     products: array<int, array<string, mixed>>,
+     *     totals: array{totalProducts: int, totalQuantity: int, totalValue: float},
+     *     lowStock: array<int, array<string, mixed>>
+     * }
+     */
+    private function inventoryData(): array
+    {
+        $products = $this->repository->all();
+        $totalQuantity = array_reduce($products, fn ($carry, $product) => $carry + (int) $product['quantity'], 0);
+        $totalValue = array_reduce($products, fn ($carry, $product) => $carry + ((int) $product['quantity'] * (float) $product['unit_price']), 0.0);
+        $lowStock = array_values(array_filter($products, fn ($product) => (int) $product['quantity'] <= 5));
+
+        return [
+            'products' => $products,
+            'totals' => [
+                'totalProducts' => count($products),
+                'totalQuantity' => $totalQuantity,
+                'totalValue' => $totalValue,
+            ],
+            'lowStock' => $lowStock,
+        ];
     }
 
     /**
